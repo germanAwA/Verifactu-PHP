@@ -354,6 +354,12 @@ class RegistrationRecord extends Record {
             if ($breakdownDetails->taxAmount !== null) {
                 $detalleDesgloseElement->add('sum1:CuotaRepercutida', $breakdownDetails->taxAmount);
             }
+            if ($breakdownDetails->surchargeRate !== null) {
+                $detalleDesgloseElement->add('sum1:TipoRecargoEquivalencia', $breakdownDetails->surchargeRate);
+            }
+            if ($breakdownDetails->surchargeAmount !== null) {
+                $detalleDesgloseElement->add('sum1:CuotaRecargoEquivalencia', $breakdownDetails->surchargeAmount);
+            }
         }
 
         $recordElement->add('sum1:CuotaTotal', $this->totalTaxAmount);
