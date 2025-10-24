@@ -157,8 +157,8 @@ class RegistrationRecord extends Record {
             }
             $expectedTotalTaxAmount += $details->taxAmount;
             $expectedTotalBaseAmount += $details->baseAmount;
-            if (isset($details->surchargeRate) || isset($details->surchargeAmount)) {
-                $expectedTotalTaxAmount += $details->surchargeRate;
+            if (isset($details->surchargeAmount)) {
+                $expectedTotalTaxAmount += $details->surchargeAmount;
             }
         }
 
