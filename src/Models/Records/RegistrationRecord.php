@@ -149,13 +149,17 @@ class RegistrationRecord extends Record {
         }
 
         $expectedTotalTaxAmount = 0;
-        $totalBaseAmount = 0;
+        $expectedTotalBaseAmount = 0;
+        
         foreach ($this->breakdown as $details) {
             if (!isset($details->taxAmount) || !isset($details->baseAmount)) {
                 return;
             }
             $expectedTotalTaxAmount += $details->taxAmount;
-            $totalBaseAmount += $details->baseAmount;
+            $expectedTotalBaseAmount += $details->baseAmount;
+            if (isset($details->surchargeRate) || isset($details->surchargeAmount)) {
+                $expectedTotalTaxAmount += $details->surchargeRate;
+            }
         }
 
         $expectedTotalTaxAmount = number_format($expectedTotalTaxAmount, 2, '.', '');
@@ -165,20 +169,15 @@ class RegistrationRecord extends Record {
                 ->addViolation();
         }
 
-        $validTotalAmount = false;
-        $bestTotalAmount = $totalBaseAmount + $expectedTotalTaxAmount;
+        $expectedTotalAmount = number_format($expectedTotalBaseAmount + $expectedTotalTaxAmount, 2, '.', '');
         foreach ([0, -0.01, 0.01, -0.02, 0.02] as $tolerance) {
-            $expectedTotalAmount = number_format($bestTotalAmount + $tolerance, 2, '.', '');
-            if ($this->totalAmount === $expectedTotalAmount) {
-                $validTotalAmount = true;
+            $expectedTotalAmountWithTolerance = number_format($expectedTotalAmount + $tolerance, 2, '.', '');
+            if ($this->totalAmount === $expectedTotalAmountWithTolerance) {
+                $context->buildViolation("Expected total amount of $expectedTotalAmount, got {$this->totalAmount}")
+                    ->atPath('totalAmount')
+                    ->addViolation();
                 break;
             }
-        }
-        if (!$validTotalAmount) {
-            $bestTotalAmount = number_format($bestTotalAmount, 2, '.', '');
-            $context->buildViolation("Expected total amount of $bestTotalAmount, got {$this->totalAmount}")
-                ->atPath('totalAmount')
-                ->addViolation();
         }
     }
 
