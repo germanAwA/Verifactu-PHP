@@ -169,15 +169,19 @@ class RegistrationRecord extends Record {
                 ->addViolation();
         }
 
+        $validTotalAmount = false;
         $expectedTotalAmount = number_format($expectedTotalBaseAmount + $expectedTotalTaxAmount, 2, '.', '');
         foreach ([0, -0.01, 0.01, -0.02, 0.02] as $tolerance) {
             $expectedTotalAmountWithTolerance = number_format($expectedTotalAmount + $tolerance, 2, '.', '');
             if ($this->totalAmount === $expectedTotalAmountWithTolerance) {
-                $context->buildViolation("Expected total amount of $expectedTotalAmount, got {$this->totalAmount}")
-                    ->atPath('totalAmount')
-                    ->addViolation();
+                $validTotalAmount = true;
                 break;
             }
+        }
+        if (!$validTotalAmount) {
+            $context->buildViolation("Expected total amount of $expectedTotalAmount, got {$this->totalAmount}")
+                ->atPath('totalAmount')
+                ->addViolation();
         }
     }
 
