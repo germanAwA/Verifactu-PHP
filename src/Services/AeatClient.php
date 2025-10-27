@@ -92,18 +92,7 @@ class AeatClient {
         return $this;
     }
 
-    /**
-     * Send invoicing records
-     *
-     * @param (RegistrationRecord|CancellationRecord)[] $records Invoicing records
-     *
-     * @return PromiseInterface<AeatResponse> Response from service
-     *
-     * @throws AeatException   if AEAT server returned an error
-     * @throws GuzzleException if request sending failed
-     */
-    public function send(array $records): PromiseInterface { /** @phpstan-ignore generics.notGeneric */
-        // Build initial request
+    public function getXML(array $records): UXML {
         $xml = UXML::newInstance('soapenv:Envelope', null, [
             'xmlns:soapenv' => self::NS_SOAPENV,
             'xmlns:sum' => self::NS_SUM,
@@ -127,6 +116,23 @@ class AeatClient {
         foreach ($records as $record) {
             $record->export($baseElement->add('sum:RegistroFactura'), $this->system);
         }
+
+        return $xml;
+    }
+
+    /**
+     * Send invoicing records
+     *
+     * @param (RegistrationRecord|CancellationRecord)[] $records Invoicing records
+     *
+     * @return PromiseInterface<AeatResponse> Response from service
+     *
+     * @throws AeatException   if AEAT server returned an error
+     * @throws GuzzleException if request sending failed
+     */
+    public function send(array $records): PromiseInterface { /** @phpstan-ignore generics.notGeneric */
+        // Build initial request
+        $xml = $this->getXML($records);
 
         // Send request
         $options = [
