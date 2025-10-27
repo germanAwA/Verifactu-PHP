@@ -4,6 +4,7 @@ namespace josemmo\Verifactu\Models\Responses;
 use DateTimeImmutable;
 use DateTimeInterface;
 use josemmo\Verifactu\Exceptions\AeatException;
+use josemmo\Verifactu\Exceptions\AeatXMLException;
 use josemmo\Verifactu\Models\Model;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -26,7 +27,8 @@ class AeatResponse extends Model {
      *
      * @return AeatResponse Parsed response
      *
-     * @throws AeatException if server returned an error or failed to parse response
+     * @throws AeatException    if server returned an error
+     * @throws AeatXMLException if client failed to parse response
      */
     public static function from(UXML $xml): self {
         $nsEnv = self::NS_ENV;
@@ -37,13 +39,14 @@ class AeatResponse extends Model {
         // Handle server errors
         $faultElement = $xml->get("{{$nsEnv}}Body/{{$nsEnv}}Fault/faultstring");
         if ($faultElement !== null) {
-            throw new AeatException($faultElement->asText());
+            $code = (int)explode(']', explode('[', $faultElement->asText())[1])[0];
+            throw new AeatException($faultElement->asText(), $code);
         }
 
         // Get root XML element
         $rootXml = $xml->get("{{$nsEnv}}Body/{{$nsTikr}}RespuestaRegFactuSistemaFacturacion");
         if ($rootXml === null) {
-            throw new AeatException('Missing <tikR:RespuestaRegFactuSistemaFacturacion /> element from response');
+            throw new AeatXMLException('Missing <tikR:RespuestaRegFactuSistemaFacturacion /> element from response');
         }
 
         // Parse CSV
@@ -57,7 +60,7 @@ class AeatResponse extends Model {
         if ($submittedAtElement !== null) {
             $submittedAt = DateTimeImmutable::createFromFormat(DateTimeInterface::ISO8601, $submittedAtElement->asText());
             if ($submittedAt === false) {
-                throw new AeatException('Invalid submitted at date: ' . $submittedAtElement->asText());
+                throw new AeatXMLException('Invalid submitted at date: ' . $submittedAtElement->asText());
             }
             $instance->submittedAt = $submittedAt;
         }
@@ -96,7 +99,7 @@ class AeatResponse extends Model {
             if ($issueDateElement !== null) {
                 $issueDate = DateTimeImmutable::createFromFormat('d-m-Y', $issueDateElement->asText());
                 if ($issueDate === false) {
-                    throw new AeatException('Invalid invoice issue date: ' . $issueDateElement->asText());
+                    throw new AeatXMLException('Invalid invoice issue date: ' . $issueDateElement->asText());
                 }
                 $item->invoiceId->issueDate = $issueDate->setTime(0, 0, 0, 0);
             }
@@ -120,15 +123,11 @@ class AeatResponse extends Model {
             }
 
             // Parse error code
-            $errorCodeElement = $itemElement->get("{{$nsTikr}}CodigoErrorRegistro");
-            if ($errorCodeElement !== null) {
-                $item->errorCode = $errorCodeElement->asText();
-            }
-
-            // Parse error description
-            $errorDescriptionElement = $itemElement->get("{{$nsTikr}}DescripcionErrorRegistro");
-            if ($errorDescriptionElement !== null) {
-                $item->errorDescription = $errorDescriptionElement->asText();
+            if ($statusElement->asText() === "Incorrecto") {
+                $errorCodeElement = $itemElement->get("{{$nsTikr}}CodigoErrorRegistro");
+                $errorDescriptionElement = $itemElement->get("{{$nsTikr}}DescripcionErrorRegistro");
+                assert($errorDescriptionElement !== null);
+                $item->exception = new AeatException($errorDescriptionElement->asText(), $errorCodeElement->asText());
             }
 
             $instance->items[] = $item;
