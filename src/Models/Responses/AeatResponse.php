@@ -123,10 +123,12 @@ class AeatResponse extends Model {
             }
 
             // Parse error code
-            if ($statusElement->asText() === "Incorrecto") {
+            if ($statusElement->asText() === 'Incorrecto' || $statusElement->asText() === 'AceptadoConErrores') {
                 $errorCodeElement = $itemElement->get("{{$nsTikr}}CodigoErrorRegistro");
                 $errorDescriptionElement = $itemElement->get("{{$nsTikr}}DescripcionErrorRegistro");
                 assert($errorDescriptionElement !== null);
+                $item->errorCode = $errorCodeElement->asText();
+                $item->errorDescription = $errorDescriptionElement->asText();
                 $item->exception = new AeatException($errorDescriptionElement->asText(), $errorCodeElement->asText());
             }
 
